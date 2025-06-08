@@ -1,11 +1,11 @@
 import React from 'react'
 
-function Pricing() {
+function Navbar() {
     return ( 
         <h1>
-            Pricing
+            Navbar
         </h1>
      );
 }
 
-export default Pricing;
+export default Navbar;
