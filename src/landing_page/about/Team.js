@@ -16,7 +16,7 @@ function Team() {
             </div>
 
           </div>
-          <div className='col-6 p-5 text-muted' style={{ fontSize: '18px' }}>
+          <div className='col-6 p-5 text-muted align-content-center' style={{ fontSize: '18px' }}>
             <p>
               Nithin bootstrapped and founded Zerodha in 2010 to overcome the hurdles he faced during his decade long stint as a trader. Today, Zerodha has changed the landscape of the Indian broking industry.
               <br />
