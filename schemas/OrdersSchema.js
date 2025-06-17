@@ -1,9 +1,11 @@
-import { Schema } from "mongoose"
+// OrdersSchema.js
+import mongoose from "mongoose";
 
-const OrdersSchema = new Schema({
-    name: String,
-     qty:Number,
-     price:Number,
-     mode:String,
+const { Schema } = mongoose;
+
+export const OrdersSchema = new Schema({
+  name: String,
+  qty: Number,
+  price: Number,
+  mode: String,
 });
-module.exports ={OrdersScehma};
