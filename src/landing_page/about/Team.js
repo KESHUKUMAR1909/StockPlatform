@@ -9,7 +9,7 @@ function Team() {
               <img src='media/images/nithinKamath.jpg' className='rounded-circle mx-auto' style={{ width: "50%" }} alt='profileImage'></img>
             </div>
             <div className='row text-center text-muted'>
-              <h1> Nithin Kamath</h1>
+              <h1>Keshu kumar</h1>
             </div>
             <div className='row text-center text-muted'>
               <p>Founder , CEO</p>
