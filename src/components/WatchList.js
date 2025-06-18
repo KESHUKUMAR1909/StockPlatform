@@ -1,7 +1,19 @@
-import React, { useState } from "react";
-import { Tooltip, Grow } from '@mui/material';
-import { KeyboardArrowDown, KeyboardArrowUp, MoreHoriz  , BarChartOutlined} from '@mui/icons-material';
-import { watchlist } from '../data/data.js';
+
+import React, { useState, useContext } from "react";
+
+import GeneralContext from "./GeneralContext";
+
+import { Tooltip, Grow } from "@mui/material";
+
+import {
+  BarChartOutlined,
+  KeyboardArrowDown,
+  KeyboardArrowUp,
+  MoreHoriz,
+} from "@mui/icons-material";
+
+import { watchlist } from "../data/data";
+
 const WatchList = () => {
   return (
     <div className="watchlist-container">
@@ -17,15 +29,9 @@ const WatchList = () => {
       </div>
 
       <ul className="list">
-        {
-          watchlist.map((stock, index) => {
-
-            return (
-              <WatchListItem stock={stock} key={index} />
-            )
-
-          })
-        }
+        {watchlist.map((stock, index) => {
+          return <WatchListItem stock={stock} key={index} />;
+        })}
       </ul>
     </div>
   );
@@ -34,54 +40,78 @@ const WatchList = () => {
 export default WatchList;
 
 const WatchListItem = ({ stock }) => {
-  const [showWatchListActions, setWatchListActions] = useState(false);
+  const [showWatchlistActions, setShowWatchlistActions] = useState(false);
 
   const handleMouseEnter = (e) => {
-    setWatchListActions(true);
-  }
-  const handleMouseExit = (e) => {
-    setWatchListActions(false);
-  }
+    setShowWatchlistActions(true);
+  };
+
+  const handleMouseLeave = (e) => {
+    setShowWatchlistActions(false);
+  };
 
   return (
-    <li onMouseEnter={handleMouseEnter} onMouseLeave={handleMouseExit}>
+    <li onMouseEnter={handleMouseEnter} onMouseLeave={handleMouseLeave}>
       <div className="item">
         <p className={stock.isDown ? "down" : "up"}>{stock.name}</p>
         <div className="itemInfo">
           <span className="percent">{stock.percent}</span>
-          <span>{stock.isDown ? (
+          {stock.isDown ? (
             <KeyboardArrowDown className="down" />
           ) : (
-            <KeyboardArrowUp className="up" />
-          )}</span>
+            <KeyboardArrowUp className="down" />
+          )}
           <span className="price">{stock.price}</span>
         </div>
       </div>
-      {showWatchListActions && <WatchListActions uid={stock.name} />}
+      {showWatchlistActions && <WatchListActions uid={stock.name} />}
     </li>
-  )
+  );
 };
-const WatchListActions = ((uid) => {
+
+const WatchListActions = ({ uid }) => {
+  const generalContext = useContext(GeneralContext);
+
+  const handleBuyClick = () => {
+    generalContext.openBuyWindow(uid);
+  };
+
   return (
     <span className="actions">
-      <span >
-        <Tooltip title="Buy (B)" placement="top" arrow TransitionComponent={Grow} >
+      <span>
+        <Tooltip
+          title="Buy (B)"
+          placement="top"
+          arrow
+          TransitionComponent={Grow}
+          onClick={handleBuyClick}
+        >
           <button className="buy">Buy</button>
         </Tooltip>
-        <Tooltip title="Sell (S)" placement="top" arrow TransitionComponent={Grow} >
+        <Tooltip
+          title="Sell (S)"
+          placement="top"
+          arrow
+          TransitionComponent={Grow}
+        >
           <button className="sell">Sell</button>
         </Tooltip>
-        <Tooltip title="Analytics (A)" placement="top" arrow TransitionComponent={Grow} >
+        <Tooltip
+          title="Analytics (A)"
+          placement="top"
+          arrow
+          TransitionComponent={Grow}
+        >
           <button className="action">
             <BarChartOutlined className="icon" />
           </button>
         </Tooltip>
-         <Tooltip title="More (M)" placement="top" arrow TransitionComponent={Grow} >
-           <button className="action">
+        <Tooltip title="More" placement="top" arrow TransitionComponent={Grow}>
+          <button className="action">
             <MoreHoriz className="icon" />
           </button>
         </Tooltip>
       </span>
     </span>
-  )
-})
+  );
+};
