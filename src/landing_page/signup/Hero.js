@@ -17,6 +17,10 @@ const Hero = () => {
       [e.target.name]: e.target.value,
     }));
   };
+
+
+
+  
   const handleSubmit = async (e) => {
     e.preventDefault();
 
@@ -24,8 +28,8 @@ const Hero = () => {
       if (showSignup) {
         const res = await dispatch(signupUser(formData));
         if (res) {
-          // Navigate after successful signup
-          window.location.href = 'http://localhost:3001';
+          const encodedUser = encodeURIComponent(JSON.stringify(res));
+          window.location.href = `http://localhost:3001?user=${encodedUser}`;
         }
       } else {
         const loginData = {
@@ -34,8 +38,8 @@ const Hero = () => {
         };
         const res = await dispatch(loginUser(loginData));
         if (res) {
-          // Navigate after successful login
-          window.location.href = 'http://localhost:3001';
+          const encodedUser = encodeURIComponent(JSON.stringify(res));
+          window.location.href = `http://localhost:3001?user=${encodedUser}`;
         }
       }
     } catch (error) {
@@ -43,6 +47,7 @@ const Hero = () => {
       alert('Authentication failed. Please check your credentials.');
     }
   };
+
 
 
   return (

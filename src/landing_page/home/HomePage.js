@@ -7,8 +7,13 @@ import Pricing from './Pricing.js';
 import Education from './Education.js';
 import OpenAccount from '../OpenAccount';
 import Footer from '../Footer.js';
+import { useEffect } from 'react';
 function HomePage() {
-    return (  
+    useEffect(() => {
+        localStorage.clear();
+        console.log("All localStorage cleared on first load");
+    }, []);
+    return (
         <>
             <Hero />
             <Awards />
