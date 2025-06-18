@@ -20,7 +20,10 @@ const sendResetEmail = require('../backend/Utils/sendResetEmail.js');
 const app = express();
 
 // Middleware
-app.use(cors());
+app.use(cors({
+  origin:['http://localhost:3000' , 'http://localhost:3001'] , 
+  credentials:true
+}));
 app.use(cookieParser());
 app.use(express.json()); // replaces body-parser
 
@@ -57,6 +60,7 @@ app.post('/signup', async (req, res) => {
   const { email, name, password } = req.body;
 
   try {
+    
     const existingUser = await UserModel.findOne({ email });
     if (existingUser) {
       return res.status(400).json({
@@ -65,6 +69,7 @@ app.post('/signup', async (req, res) => {
     }
 
     const user = new UserModel({ email, name, password });
+
     await user.save();
 
     const token = generateToken(user._id);
@@ -105,6 +110,7 @@ app.get('/me', (req, res) => {
 
 app.post('/login', async (req, res) => {
   const { email, password } = req.body;
+  console.log(email , password);
 
   try {
     console.log("Email:", email);
