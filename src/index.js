@@ -3,8 +3,7 @@ import ReactDOM from 'react-dom/client';
 import './index.css';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { Provider } from 'react-redux';       // 🟡 import Redux Provider
-import store from './redux/store.js';            // 🟡 import your Redux store
-
+import store from './redux/store.js';            
 // Component imports
 import HomePage from './landing_page/home/HomePage';
 import Signup from './landing_page/signup/Signup';
@@ -15,7 +14,6 @@ import SupportPage from './landing_page/support/SupportPage';
 import Footer from './landing_page/Footer';
 import NotFound from './landing_page/NotFound';
 import Navbar from './landing_page/Navbar';
-
 // Render your app
 const root = ReactDOM.createRoot(document.getElementById('root'));
 root.render(

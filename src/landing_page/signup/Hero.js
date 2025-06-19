@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { loginUser, signupUser } from '../../redux/actions';
+import { useNavigate } from 'react-router-dom';
 
 const Hero = () => {
   const dispatch = useDispatch();
   const { user, error } = useSelector((state) => state);
-
+  const navigate = useNavigate();
   const [showSignup, setShowSignup] = useState(true);
   const [formData, setFormData] = useState({ name: '', email: '', password: '' });
 
@@ -28,8 +29,8 @@ const Hero = () => {
       if (showSignup) {
         const res = await dispatch(signupUser(formData));
         if (res) {
-          const encodedUser = encodeURIComponent(JSON.stringify(res));
-          window.location.href = `http://localhost:3001?user=${encodedUser}`;
+            navigate('/home')
+            
         }
       } else {
         const loginData = {
@@ -38,8 +39,7 @@ const Hero = () => {
         };
         const res = await dispatch(loginUser(loginData));
         if (res) {
-          const encodedUser = encodeURIComponent(JSON.stringify(res));
-          window.location.href = `http://localhost:3001?user=${encodedUser}`;
+           navigate('/home')
         }
       }
     } catch (error) {
