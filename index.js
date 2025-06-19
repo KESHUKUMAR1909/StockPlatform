@@ -6,7 +6,8 @@ const cors = require('cors');
 const cookieParser = require('cookie-parser');
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcrypt');
-const crypto = require('crypto')
+const crypto = require('crypto');
+
 // Models
 const { OrdersModel } = require('./model/OrdersModel.js');
 const { HoldingModel } = require('./model/HoldingsModel.js');
@@ -21,117 +22,166 @@ const app = express();
 
 // Middleware
 app.use(cors({
-  origin:['http://localhost:3000' , 'http://localhost:3001'] , 
-  credentials:true
+  origin: ['http://localhost:3000', 'http://localhost:3001'],
+  credentials: true
 }));
 app.use(cookieParser());
-app.use(express.json()); // replaces body-parser
+app.use(express.json());
 
 const PORT = process.env.PORT || 3002;
 const MONGO_URI = process.env.MONGO_URL || 'mongodb://localhost:27017/myapp';
 
+// Auth Middleware
+const authMiddleware = (req, res, next) => {
+  const token = req.cookies.token;
+  if (!token) return res.status(401).json({ message: "Not logged in" });
 
-// 🟢 Public Routes
-app.get('/allHoldings', async (req, res) => {
-  const allHoldings = await HoldingModel.find();
-  res.json(allHoldings);
+  try {
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || "secret");
+    req.userId = decoded.id;
+    next();
+  } catch (err) {
+    return res.status(401).json({ message: "Invalid token" });
+  }
+};
+
+// Protected Routes
+app.get('/allHoldings', authMiddleware, async (req, res) => {
+  const userHoldings = await HoldingModel.find({ user: req.userId });
+  res.json(userHoldings);
 });
 
-app.get('/allPositions', async (req, res) => {
-  const allPositions = await PostionsModel.find();
-  res.json(allPositions);
+app.get('/allPositions', authMiddleware, async (req, res) => {
+  const userPositions = await PostionsModel.find({ user: req.userId });
+  res.json(userPositions);
 });
 
-app.post('/newOrder', async (req, res) => {
-  const newOrder = new OrdersModel({
-    name: req.body.name,
-    qty: req.body.qty,
-    price: req.body.price,
-    mode: req.body.mode,
-  });
+app.post('/newOrder', authMiddleware, async (req, res) => {
+  try {
+    const userId = req.userId;
+    const { name, qty, price, mode } = req.body;
 
-  await newOrder.save();
-  res.send("Order Saved");
+    if (!name || !qty || !price || !mode) {
+      return res.status(400).send("Missing required fields");
+    }
+
+    const parsedQty = Number(qty);
+    const parsedPrice = Number(price);
+
+    const existingOrder = await OrdersModel.findOne({ name, mode, user: userId });
+
+    if (mode === "BUY") {
+      if (existingOrder) {
+        existingOrder.qty += parsedQty;
+        existingOrder.price = parsedPrice;
+        await existingOrder.save();
+      } else {
+        const newOrder = new OrdersModel({ name, qty: parsedQty, price: parsedPrice, mode, user: userId });
+        await newOrder.save();
+      }
+    }
+
+    if (mode === "SELL") {
+      if (existingOrder) {
+        if (existingOrder.qty <= parsedQty) {
+          await OrdersModel.deleteOne({ _id: existingOrder._id });
+        } else {
+          existingOrder.qty -= parsedQty;
+          await existingOrder.save();
+        }
+      } else {
+        const newSellOrder = new OrdersModel({ name, qty: parsedQty, price: parsedPrice, mode, user: userId });
+        await newSellOrder.save();
+      }
+    }
+
+    const holding = await HoldingModel.findOne({ name, user: userId });
+
+    if (mode === "BUY") {
+      if (holding) {
+        const totalQty = holding.qty + parsedQty;
+        const totalValue = (holding.avg * holding.qty) + (parsedPrice * parsedQty);
+        holding.qty = totalQty;
+        holding.avg = totalValue / totalQty;
+        holding.price = parsedPrice;
+        await holding.save();
+      } else {
+        const newHolding = new HoldingModel({
+          name,
+          qty: parsedQty,
+          avg: parsedPrice,
+          price: parsedPrice,
+          user: userId
+        });
+        await newHolding.save();
+      }
+    }
+
+    if (mode === "SELL") {
+      if (!holding || holding.qty < parsedQty) {
+        return res.status(400).send("Not enough shares to sell.");
+      }
+
+      holding.qty -= parsedQty;
+      if (holding.qty === 0) {
+        await HoldingModel.deleteOne({ _id: holding._id });
+      } else {
+        await holding.save();
+      }
+    }
+
+    res.status(200).send("✅ Order and holdings updated successfully.");
+  } catch (error) {
+    console.error("❌ Error processing order or updating holdings:", error);
+    res.status(500).send("Internal Server Error");
+  }
 });
 
-
-// 🔐 Signup with cookie-based token
+// Signup
 app.post('/signup', async (req, res) => {
   const { email, name, password } = req.body;
 
   try {
-    
     const existingUser = await UserModel.findOne({ email });
     if (existingUser) {
-      return res.status(400).json({
-        message: "User already exists, please login"
-      });
+      return res.status(400).json({ message: "User already exists, please login" });
     }
 
     const user = new UserModel({ email, name, password });
-
     await user.save();
 
     const token = generateToken(user._id);
-
-    const { password: _, ...userWithoutPassword } = user.toObject(); // exclude password
+    const { password: _, ...userWithoutPassword } = user.toObject();
 
     res.cookie('token', token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'strict',
-      maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
+      maxAge: 7 * 24 * 60 * 60 * 1000
     }).status(201).json({
       user: userWithoutPassword,
       message: "User Created Successfully"
     });
-
   } catch (error) {
     res.status(400).json({ error: error.message });
   }
 });
 
-
-// 🧾 Check login status
-app.get('/me', (req, res) => {
-  const token = req.cookies.token;
-  if (!token) {
-    return res.status(401).json({ message: "Not logged in" });
-  }
-
-  try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET || "secret");
-    res.json({ userId: decoded.id });
-  } catch (err) {
-    res.status(401).json({ message: "Invalid token" });
-  }
-});
-
-
+// Login
 app.post('/login', async (req, res) => {
   const { email, password } = req.body;
-  console.log(email , password);
-
   try {
-    console.log("Email:", email);
-    console.log("Password:", password);
-
     const existingUser = await UserModel.findOne({ email }).select("+password");
-
     if (!existingUser) {
       return res.status(400).json({ message: "User not found" });
     }
 
-    console.log("User found:", existingUser);
-
     const isMatch = await bcrypt.compare(password, existingUser.password);
-
     if (!isMatch) {
       return res.status(401).json({ message: "Invalid email or password" });
     }
 
     const token = generateToken(existingUser._id);
-
     res.cookie('token', token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
@@ -143,38 +193,31 @@ app.post('/login', async (req, res) => {
       body: existingUser,
       message: "You are successfully logged in..."
     });
-
   } catch (err) {
-    console.error("Login error:", err); // log full error
+    console.error("Login error:", err);
     res.status(500).json({ message: "Internal server error" });
   }
 });
 
-
-// logout user
+// Logout
 app.post('/logout', (req, res) => {
   res.clearCookie('token', {
     httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
+    secure: process.env.NODE_ENV === 'production'
   });
-
   res.status(200).json({ message: 'Logged out successfully' });
 });
 
-
-
-// forgot password
-
+// Forgot Password
 app.post('/forgot', async (req, res) => {
   const { email } = req.body;
-
   try {
     const user = await UserModel.findOne({ email });
     if (!user) return res.status(404).json({ message: "User not found" });
 
     const token = crypto.randomBytes(32).toString('hex');
     user.resetPasswordToken = token;
-    user.resetPasswordExpires = Date.now() + 15 * 60 * 1000; // 15 min
+    user.resetPasswordExpires = Date.now() + 15 * 60 * 1000;
     await user.save();
 
     const resetLink = `http://localhost:3002/reset-password?token=${token}`;
@@ -186,13 +229,13 @@ app.post('/forgot', async (req, res) => {
     res.status(500).json({ message: "Server error" });
   }
 });
+
+// Reset Password
 app.post('/reset-password', async (req, res) => {
   const token = req.query.token;
   const { password } = req.body;
 
-  if (!token) {
-    return res.status(400).json({ message: 'Reset token missing from URL' });
-  }
+  if (!token) return res.status(400).json({ message: 'Reset token missing from URL' });
 
   try {
     const user = await UserModel.findOne({
@@ -200,28 +243,20 @@ app.post('/reset-password', async (req, res) => {
       resetPasswordExpires: { $gt: Date.now() }
     });
 
-    if (!user) {
-      return res.status(400).json({ message: 'Invalid or expired reset token' });
-    }
+    if (!user) return res.status(400).json({ message: 'Invalid or expired reset token' });
 
-    // ✅ Set new password (triggers pre-save hash)
     user.password = password;
-
-    // ❌ Invalidate the reset token
     user.resetPasswordToken = undefined;
     user.resetPasswordExpires = undefined;
 
     await user.save();
 
-    // ✅ Generate login token
     const loginToken = generateToken(user._id);
-
-    // ✅ Send as cookie
     res.cookie('token', loginToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'strict',
-      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+      maxAge: 7 * 24 * 60 * 60 * 1000
     });
 
     res.status(200).json({
@@ -238,8 +273,7 @@ app.post('/reset-password', async (req, res) => {
   }
 });
 
-
-// 🚀 Connect DB and Start Server
+// Start Server
 const startServer = async () => {
   try {
     await mongoose.connect(MONGO_URI);
@@ -248,7 +282,6 @@ const startServer = async () => {
     app.listen(PORT, () => {
       console.log(`🚀 Server running on http://localhost:${PORT}`);
     });
-
   } catch (err) {
     console.error("❌ Failed to connect to DB:", err.message);
     process.exit(1);

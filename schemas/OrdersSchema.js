@@ -1,6 +1,5 @@
-// OrdersSchema.js
-import mongoose from "mongoose";
-
+import mongoose from 'mongoose';
+import UserSchema from './UserSchema.js';
 const { Schema } = mongoose;
 
 export const OrdersSchema = new Schema({
@@ -8,4 +7,8 @@ export const OrdersSchema = new Schema({
   qty: Number,
   price: Number,
   mode: String,
+  user: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User'
+}
 });
